@@ -117,7 +117,7 @@ function sbGo(s, say) {
     if (hand === '狐狸') {
       ev.sold = false;
       ev.look = '他往门缝外头看我的手，看了一下，啪地就把门关上了';
-      ev.money = '钱没给出去，还在我手里';
+      ev.money = '钱没给出去，还在我手里。他连我手里的钱都没看，门就关上了';
     } else {
       ev.sold = true;
       ev.look = '他往门缝外头看我的手，看了好一会儿，才把药递出来';
@@ -137,7 +137,7 @@ function sbGo(s, say) {
   tn.ev = ev;
   if (dazzle) sbP(s, '"门开了一道缝，光一下照出来，好晃眼，我就把手伸进去了。伸的是这只。"他举起自己毛茸茸的那只前爪。');
   if (ev.chased) {
-    sbP(s, '他浑身是雪，喘得说不出话，空着手。过了好一会儿他才说："鱼店的叔叔追我。"');
+    sbP(s, '他浑身是雪，喘得说不出话，空着手。过了好一会儿他才说："鱼店的叔叔追我。钱跑丢了。"');
     sbP(s, '"人好可怕……"');
     s.scared = true;
     s.everChased = true;
@@ -163,13 +163,13 @@ function sbGo(s, say) {
 function sbAnswer(s, a) {
   var tn = s.tonight;
   if (tn['没去']) {
-    if (a === '不问了') sbP(s, '你没再问。'); else sbP(s, '他在你肚子底下已经睡着了。');
+    if (a === '不问了') sbP(s, '你没再问，把他搂过来睡了。'); else sbP(s, '他在你肚子底下已经睡着了。');
     return;
   }
   var ev = tn.ev;
   if (a === '问他那人看了哪儿') sbP(s, '你问那人看了他哪儿。他想了想："' + ev.look + '。"');
   else if (a === '问他钱怎么给的') sbP(s, '你问钱是怎么给的。他说："' + ev.money + '。"');
-  else sbP(s, '你没再问。');
+  else sbP(s, '你没再问，把他搂过来睡了。');
 }
 
 function sbEndNight(s) {
