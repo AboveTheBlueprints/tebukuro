@@ -6,18 +6,23 @@ var SB_NIGHTS = [
   ['妈妈的手套', '帽子店', '门口挂着一顶黑礼帽的招牌']
 ];
 var SB_LOOKS = {'帽子店': '钱', '药店': '手', '鱼店': '手'};
-var SB_SAY = ['伸人的手', '先给钱', '人很可怕', '今晚那家要伸人的手', '今晚那家只看钱', '什么也不说'];
+var SB_SAY = ['伸人的手', '先给钱', '人很可怕', '什么也不说'];
 var SB_ASK = ['问他那人看了哪儿', '问他钱怎么给的', '不问了'];
 
 function sbNew() {
-  return {night: 0, phase: '说', handFree: false, scared: false, trust: 0, saidScary: false,
+  return {night: 0, phase: '说', handFree: false, scared: false, everChased: false, trust: 0, saidScary: false,
     out: [], rows: [], tonight: {}, momSick: false};
 }
 
 function sbP(s, t) { s.out.push(t === undefined ? '' : t); }
 
 function sbMenu(s) {
-  if (s.phase === '说') return SB_SAY.slice();
+  if (s.phase === '说') {
+    var shop = SB_NIGHTS[s.night][1];
+    var m = SB_SAY.slice(0, 3).concat(['到了' + shop + '伸人的手']);
+    if (s.night === 3) m.push('帽子店的叔叔上回没追你');
+    return m.concat(['什么也不说']);
+  }
   if (s.phase === '问') return SB_ASK.slice();
   return [];
 }
@@ -47,10 +52,14 @@ function sbStartNight(s) {
 
 function sbReply(s, say, shop) {
   if (say === '什么也不说') { sbP(s, '你什么也没说。他蹦蹦跳跳地走了。'); return null; }
-  if (say === '今晚那家要伸人的手' || say === '今晚那家只看钱') {
-    var w = say === '今晚那家要伸人的手' ? '要伸人的手' : '只看钱';
-    sbP(s, '你说：' + shop + '那家' + w + '。');
-    sbP(s, '他点点头："嗯，' + shop + w + '。"走了。');
+  if (say === '到了' + shop + '伸人的手') {
+    sbP(s, '你说：到了' + shop + '，伸人的手。');
+    sbP(s, '他点点头："嗯，到了' + shop + '，伸人的手。"走了。');
+    return true;
+  }
+  if (say === '帽子店的叔叔上回没追你') {
+    sbP(s, '你说：帽子店的叔叔，上回没追你。');
+    sbP(s, (s.rows.length && s.rows[0]['手'] === '狐狸的手') ? '他想了想："嗯……他还\'哦哟\'了一声呢。"走了。' : '他想了想："嗯。"走了。');
     return true;
   }
   sbP(s, '你说：' + say + '。');
@@ -73,7 +82,7 @@ function sbGo(s, say) {
   var n = s.night, what = SB_NIGHTS[n][0], shop = SB_NIGHTS[n][1];
   var tn = {'说': say, '回': '', '手': '', '看': SB_LOOKS[shop], '带回': '没带回东西'};
   s.tonight = tn;
-  if (n === 3 && s.scared && say !== '今晚那家要伸人的手' && say !== '今晚那家只看钱') {
+  if (n === 3 && s.scared && say !== '到了' + shop + '伸人的手' && say !== '帽子店的叔叔上回没追你') {
     sbP(s, '你说完，他走到洞口，又回来了。"我不敢去……"他往你肚子底下一钻，不出来了。');
     tn['回'] = '不敢去'; tn['手'] = '没去';
     s.rows.push(tn);
@@ -85,7 +94,7 @@ function sbGo(s, say) {
   }
   var ok = sbReply(s, say, shop);
   tn['回'] = ok === null || ok === undefined ? '一声没吭就走了' : (ok ? '答应了' : '回了一句嘴');
-  var wantHuman = (ok === true && (say === '伸人的手' || say === '今晚那家要伸人的手')) || (ok === true && say === '人很可怕');
+  var wantHuman = (ok === true && (say === '伸人的手' || say === '到了' + shop + '伸人的手')) || (ok === true && say === '人很可怕');
   var hand, dazzle;
   if (n === 0) { hand = '狐狸'; dazzle = true; }
   else {
@@ -131,12 +140,13 @@ function sbGo(s, say) {
     sbP(s, '他浑身是雪，喘得说不出话，空着手。过了好一会儿他才说："鱼店的叔叔追我。"');
     sbP(s, '"人好可怕……"');
     s.scared = true;
+    s.everChased = true;
     if (s.saidScary) { sbP(s, '"妈妈说得对。"'); s.trust += 1; }
     tn['带回'] = '没带回东西，钱也丢了';
   } else if (ev.sold) {
     if (n === 3) { sbP(s, '他两只前爪捧着一副大一点的毛线手套，往你的前爪上套。'); tn['带回'] = '妈妈的手套'; }
     else { sbP(s, '他把' + what + '举给你看。'); tn['带回'] = what; }
-    if (hand === '狐狸') { sbP(s, '"人一点也不可怕！他看见我的手，也没怎么样。"'); s.handFree = true; }
+    if (hand === '狐狸') { sbP(s, '"人一点也不可怕！他看见我的手，也没怎么样。"'); s.handFree = true; s.scared = false; }
     else if (wantHuman) { sbP(s, '"我照妈妈说的做了，就买到了！"'); s.trust += 1; }
     else sbP(s, '"买到啦。"');
   } else {
@@ -145,6 +155,7 @@ function sbGo(s, say) {
     if (n === 1) s.momSick = true;
   }
   if (n === 3 && !ev.chased) sbP(s, '他又说："回来的时候，有一扇窗户里有人在唱歌，是人的妈妈在哄孩子睡觉。人的孩子问：这么冷的晚上，林子里的小狐狸会不会冷得哭？我就跑回来了。"');
+  sbP(s, '他困得直揉眼睛。你只来得及问他一句。');
   s.rows.push(tn);
   s.phase = '问';
 }
@@ -170,7 +181,7 @@ function sbEndNight(s) {
 
 function sbEnding(s) {
   sbP(s, '—— 后来 ——');
-  if (s.scared) sbP(s, '你把他搂紧了，什么也没说。');
+  if (s.everChased) sbP(s, '你把他搂紧了，什么也没说。');
   else sbP(s, '你听他说完，把他搂紧了，小声说："人真的是好的吗。人真的是好的吗。"');
   sbP(s, '');
   sbP(s, '—— 这四个晚上 ——');
