@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>手袋</title>
+<style>
+  body { margin: 0; background: #eef0f2; color: #23272b; font: 17px/1.75 "PingFang SC", "Noto Serif SC", "Songti SC", serif; }
+  #wrap { max-width: 680px; margin: 0 auto; padding: 28px 22px 150px; }
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: 2px; }
+  .sub { color: #7b8590; font-size: 14px; margin-bottom: 18px; }
+  #older { margin: 0 0 10px; }
+  #older summary { color: #7b8590; font-size: 14px; cursor: pointer; }
+  #older .lines { color: #5f6973; font-size: 15px; }
+  p { margin: 0 0 6px; }
+  .day { margin: 18px 0 6px; color: #3d5a73; font-weight: bold; letter-spacing: 1px; }
+  .me { color: #8a5a2b; margin-top: 4px; }
+  .new { background: #fffbe8; border-left: 3px solid #d9a441; padding: 2px 8px; margin-left: -11px; }
+  .end { color: #4f5a64; font-size: 15px; white-space: pre-wrap; }
+  .letter { color: #2b2620; background: #f7f1e3; padding: 6px 10px; border-radius: 4px; white-space: pre-wrap; }
+  #btns { position: fixed; left: 0; right: 0; bottom: 0; background: #e1e6ea; border-top: 1px solid #c3ccd4; padding: 12px 10px 16px; text-align: center; }
+  #btns button { font: inherit; font-size: 16px; margin: 4px 5px; padding: 6px 14px; border: 1px solid #8e9aa6; border-radius: 6px; background: #fbfcfd; color: #23272b; cursor: pointer; }
+  #btns button:hover { background: #fff4d6; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>手袋</h1>
+  <div class="sub">冬天，一个狐狸洞。你是狐狸妈妈，不敢去镇上。四个晚上，你的孩子替你去，回来讲给你听。</div>
+  <div id="intro"></div>
+  <details id="older"><summary>前几天</summary><div class="lines" id="olderLines"></div></details>
+  <div id="log"></div>
+</div>
+<div id="btns"></div>
+<script src="sim.js"></script>
+<script>
+var lwActs = [];
+var lwPrevLen = 0;
+
+function lwEsc(t) { return t.replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+
+function lwLineHtml(t, isNew) {
+  var cls = '';
+  if (/^—— /.test(t)) cls = 'day';
+  else if (/^> /.test(t)) { cls = 'me'; t = '你：' + t.slice(2); }
+  else if (/^能做的：/.test(t)) return '';
+  else if (/^第 \d+ 晚，/.test(t)) cls = 'end';
+  else if (/^（完）$/.test(t)) cls = 'end';
+  if (t === '') return '<p>&nbsp;</p>';
+  var body = lwEsc(t);
+  return '<p class="' + cls + (isNew ? ' new' : '') + '">' + body + '</p>';
+}
+
+function lwDraw() {
+  var r = sbRun(lwActs);
+  var out = r.out;
+  // 只把最近两天摊开，更早的收进"前几天"（走完了：只摊开第 7 天和结尾）
+  var dayIdx = [];
+  for (var k = 0; k < out.length; k++) if (/^—— 第 \d+ 个晚上/.test(out[k])) dayIdx.push(k);
+  var cut = 0;
+  if (!r.done && dayIdx.length >= 2) cut = dayIdx[dayIdx.length - 2];
+  if (r.done && dayIdx.length >= 1) cut = dayIdx[dayIdx.length - 1];
+  var intro = dayIdx.length ? dayIdx[0] : out.length;
+  var ih = '', oh = '', lh = '';
+  for (k = 0; k < out.length; k++) {
+    var h = lwLineHtml(out[k], k >= lwPrevLen && lwPrevLen > 0);
+    if (k < intro && cut > 0) ih += h;
+    else if (k < cut) oh += h; else lh += h;
+  }
+  document.getElementById('intro').innerHTML = ih;
+  document.getElementById('older').style.display = cut > 0 ? '' : 'none';
+  document.getElementById('olderLines').innerHTML = oh;
+  document.getElementById('log').innerHTML = lh;
+  var box = document.getElementById('btns');
+  box.innerHTML = '';
+  var list = r.done ? ['重来'] : r.ask;
+  for (k = 0; k < list.length; k++) {
+    var b = document.createElement('button');
+    b.textContent = list[k] === '重来' ? '重来' : list[k];
+    b.setAttribute('data-k', list[k]);
+    b.onclick = lwClick;
+    box.appendChild(b);
+  }
+  lwPrevLen = out.length;
+  window.scrollTo(0, document.body.scrollHeight);
+}
+
+function lwClick(e) {
+  var a = e.currentTarget.getAttribute('data-k');
+  if (a === '重来') { lwActs = []; lwPrevLen = 0; }
+  else { lwPrevLen = sbRun(lwActs).out.length; lwActs.push(a); }
+  lwDraw();
+}
+
+lwDraw();
+</script>
+</body>
+</html>
